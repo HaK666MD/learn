@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:learn/config/network/permission_request.dart';
 import 'package:learn/config/router/page_arguments.dart';
+import 'package:learn/ui/screens/gallery/download_progress.dart';
 import 'package:learn/ui/screens/gallery/gallery_provider.dart';
 import 'package:provider/provider.dart';
 
 class GalleryPhotoScreen extends StatelessWidget {
   const GalleryPhotoScreen({super.key, required this.args});
-
   final PageArguments args;
 
   @override
@@ -38,8 +39,28 @@ class GalleryPhotoScreen extends StatelessWidget {
                 return const SizedBox.shrink();
               }
               return Hero(
-                  tag: provider.photo!.id,
-                  child: Center(child: Image.network(provider.photo!.url)),
+                tag: provider.photo!.id,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(child: Image.network(provider.photo!.url)),
+                    const SizedBox(height: 15.0,),
+                    ElevatedButton(
+                      onPressed: () async {
+                        bool result = await permissionRequest();
+                        if (result && context.mounted) {
+                          showDialog(
+                            context: context,
+                            builder: (_) => DownloadProgressDialog(url : provider.photo!.url),
+                          );
+                        } else {
+                          debugPrint('No permission to read and write.');
+                        }
+                      },
+                      child: const Text('Download File'),
+                    ),
+                  ],
+                ),
               );
             },
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:learn/config/di/locator.dart';
+import 'package:learn/ui/screens/gallery/download_provider.dart';
 import 'package:learn/ui/screens/gallery/gallery_provider.dart';
 import 'package:learn/ui/screens/todo/todo_provider.dart';
 import 'package:learn/config/router/app_router.dart';
@@ -20,6 +21,7 @@ class MainApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => TodoProvider()),
         ChangeNotifierProvider(create: (_) => GalleryProvider()),
+        ChangeNotifierProvider(create: (_) => DownloadProvider()),
       ],
       builder: (_, child) {
         return MaterialApp(
