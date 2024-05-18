@@ -7,51 +7,13 @@ import 'package:path_provider/path_provider.dart';
 class FileDownload {
   final Dio _dio = getIt<Dio>();
 
-  Future<String?> _getMimeType(String url) async {
-    try {
-      final response = await _dio.head(url);
-      return response.headers.value('content-type');
-    } catch (e) {
-      debugPrint('Exception while getting MIME type: $e');
-      return null;
-    }
-  }
-
-  Future<String> _getFilePath(String filename) async {
-    try {
-      Directory? dir;
-      if (Platform.isIOS) {
-        dir = await getApplicationDocumentsDirectory();
-        debugPrint(dir.path);
-      } else {
-        dir = Directory('/storage/emulated/0/Download/');
-        if (!await dir.exists()) {
-          dir = await getExternalStorageDirectory();
-        }
-      }
-      if (dir != null) {
-        return '${dir.path}/$filename';
-      } else {
-        throw Exception('Unable to get directory');
-      }
-    } catch (err) {
-      debugPrint('Cannot get download folder path: $err');
-      rethrow;
-    }
-  }
-
   void startDownloading(
-    context,
     Function(int, int) onProgress,
     String url,
   ) async {
     try {
-      String? mimeType = await _getMimeType(url);
-      if (mimeType != null) {
-        String fileExtension = mimeType.split('/').last;
-        String fileName = '${url.split('/').last}.$fileExtension';
-        String filePath = await _getFilePath(fileName);
-
+      String? filePath = await _getFilePath(url);
+      if (filePath != null) {
         await _dio.download(
           url,
           filePath,
@@ -60,12 +22,58 @@ class FileDownload {
           },
           deleteOnError: true,
         );
-        Navigator.of(context).pop();
-      } else {
-        debugPrint('Unable to determine MIME type');
-      }
+      } 
     } catch (e) {
       debugPrint('Exception during download: $e');
+    }
+  }
+
+  Future<String?> _getFilePath(String url) async {
+    try {
+      final response = await _dio.head(url);
+      final mimeType = response.headers.value('content-type');
+      if (mimeType != null) {
+        String fileExtension = mimeType.split('/').last;
+        String baseName = url.split('/').last;
+        String fileName = baseName.length > 5 ? baseName.substring(0, 5) : baseName;
+        return _setFileToDir('$fileName.$fileExtension');
+      }
+    } catch (e) {
+      throw Exception('Exception while getting MIME type: $e');
+    }
+    return null;
+  }
+
+  Future<String> _setFileToDir(String filename) async {
+    try {
+      Directory? dir;
+      if (Platform.isIOS) {
+        dir = await getApplicationDocumentsDirectory(); // for iOS
+        debugPrint(dir.path);
+      } else {
+        dir = Directory('/storage/emulated/0/Download/'); // for Android
+        if (!await dir.exists()) {
+          dir = await getExternalStorageDirectory();
+        }
+      }
+
+      if (dir != null) {
+        String path = '${dir.path}/$filename';
+        String newPath = path;
+        int counter = 1;
+        String fileExtension = filename.contains('.') ? filename.split('.').last : '';
+        String fileNameWithoutExt = filename.replaceAll('.$fileExtension', '');
+        while (await File(newPath).exists()) {
+          newPath = '${dir.path}/$fileNameWithoutExt($counter).$fileExtension';
+          counter++;
+        }
+        return newPath;
+      } else {
+        throw Exception('Unable to get directory');
+      }
+    } catch (err) {
+      debugPrint('Cannot get download folder path: $err');
+      rethrow;
     }
   }
 }

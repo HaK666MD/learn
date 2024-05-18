@@ -6,11 +6,12 @@ Future<bool> permissionRequest() async {
     bool perm = false;
     if (Platform.isIOS) {
       perm = await permissionStorage();
-    } else if (Platform.isAndroid) {
+    } 
+    if (Platform.isAndroid) {
       final AndroidDeviceInfo android = await DeviceInfoPlugin().androidInfo;
       final int sdkInt = android.version.sdkInt;
       perm = sdkInt > 32 ? await permissionPhotos() : await permissionStorage();
-    } else {}
+    } 
     return Future<bool>.value(perm);
   }
 

@@ -8,11 +8,12 @@ class DownloadProgressDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Provider.of<DownloadProvider>(context, listen: false).startDownload(context,url);
+    Provider.of<DownloadProvider>(context, listen: false).startDownload(url);
     return AlertDialog(
       content: Consumer<DownloadProvider>(
         builder: (_, downloadProvider, __) {
           String downloadingProgress = (downloadProvider.progress * 100).toInt().toString();
+          if (downloadProvider.progress == 1.0) Navigator.of(context).pop();
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
