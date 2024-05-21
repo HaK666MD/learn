@@ -3,16 +3,25 @@ import 'package:learn/config/network/file_download.dart';
 
 class DownloadProvider with ChangeNotifier {
   double _progress = 0.0;
-  double get progress => _progress;
+  String? _errorMessage;
 
-  void startDownload(url) {
+  double get progress => _progress;
+  String? get errorMessage => _errorMessage;
+
+  void startDownload(String url) {
     _progress = 0.0;
-    FileDownload().startDownloading(
+    _errorMessage = null;
+    notifyListeners();
+
+    FileDownloadService().startDownloading(
       (receivedBytes, totalBytes) {
         _progress = receivedBytes / totalBytes;
         notifyListeners();
       },
       url,
-    );
+    ).catchError((error) {
+      _errorMessage = error.toString();
+      notifyListeners();
+    });
   }
 }

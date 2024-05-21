@@ -1,79 +1,64 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
 import 'package:learn/config/di/locator.dart';
 import 'package:path_provider/path_provider.dart';
 
-class FileDownload {
+class FileDownloadService {
   final Dio _dio = getIt<Dio>();
 
-  void startDownloading(
+  Future<void> startDownloading(
     Function(int, int) onProgress,
     String url,
   ) async {
     try {
-      String? filePath = await _getFilePath(url);
-      if (filePath != null) {
-        await _dio.download(
-          url,
-          filePath,
-          onReceiveProgress: (receivedBytes, totalBytes) {
-            onProgress(receivedBytes, totalBytes);
-          },
-          deleteOnError: true,
-        );
-      } 
+      final filePath = await _getFilePath(url);
+      await _dio.download(
+        url,
+        filePath,
+        onReceiveProgress: (receivedBytes, totalBytes) {
+          onProgress(receivedBytes, totalBytes);
+        },
+        deleteOnError: true,
+      );
+    } on DioException catch (e) {
+      throw 'Exception during download: ${e.message}';
     } catch (e) {
-      debugPrint('Exception during download: $e');
+      throw 'Unexpected error: $e';
     }
   }
 
-  Future<String?> _getFilePath(String url) async {
+  Future<String> _getFilePath(String url) async {
     try {
       final response = await _dio.head(url);
       final mimeType = response.headers.value('content-type');
-      if (mimeType != null) {
-        String fileExtension = mimeType.split('/').last;
-        String baseName = url.split('/').last;
-        String fileName = baseName.length > 5 ? baseName.substring(0, 5) : baseName;
-        return _setFileToDir('$fileName.$fileExtension');
-      }
-    } catch (e) {
-      throw Exception('Exception while getting MIME type: $e');
+      if (mimeType == null) throw 'Could not determine MIME type';
+      
+      final fileExtension = mimeType.split('/').last;
+      final baseName = url.split('/').last;
+      final fileName = baseName.length > 8 ? baseName.substring(0, 8) : baseName;
+      final uniqueFileName = '${fileName}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+
+      return await _getDownloadDirectory(uniqueFileName);
+    } on DioException catch (e) {
+      throw 'Exception while getting MIME type: ${e.message}';
     }
-    return null;
   }
 
-  Future<String> _setFileToDir(String filename) async {
+  Future<String> _getDownloadDirectory(String filename) async {
     try {
-      Directory? dir;
+      Directory? directory;
       if (Platform.isIOS) {
-        dir = await getApplicationDocumentsDirectory(); // for iOS
-        debugPrint(dir.path);
+        directory = await getApplicationDocumentsDirectory();
       } else {
-        dir = Directory('/storage/emulated/0/Download/'); // for Android
-        if (!await dir.exists()) {
-          dir = await getExternalStorageDirectory();
+        directory = Directory('/storage/emulated/0/Download/');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
         }
       }
-
-      if (dir != null) {
-        String path = '${dir.path}/$filename';
-        String newPath = path;
-        int counter = 1;
-        String fileExtension = filename.contains('.') ? filename.split('.').last : '';
-        String fileNameWithoutExt = filename.replaceAll('.$fileExtension', '');
-        while (await File(newPath).exists()) {
-          newPath = '${dir.path}/$fileNameWithoutExt($counter).$fileExtension';
-          counter++;
-        }
-        return newPath;
-      } else {
-        throw Exception('Unable to get directory');
-      }
-    } catch (err) {
-      debugPrint('Cannot get download folder path: $err');
-      rethrow;
+      if (directory == null) throw 'Unable to get the download directory';
+      return '${directory.path}/$filename';
+    } catch (e) {
+      throw 'Error retrieving download directory path: $e';
     }
   }
 }

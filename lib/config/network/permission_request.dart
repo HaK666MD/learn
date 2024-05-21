@@ -2,43 +2,32 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-Future<bool> permissionRequest() async {
-    bool perm = false;
-    if (Platform.isIOS) {
-      perm = await permissionStorage();
-    } 
-    if (Platform.isAndroid) {
-      final AndroidDeviceInfo android = await DeviceInfoPlugin().androidInfo;
-      final int sdkInt = android.version.sdkInt;
-      perm = sdkInt > 32 ? await permissionPhotos() : await permissionStorage();
-    } 
-    return Future<bool>.value(perm);
+Future<bool> requestPermission() async {
+  if (Platform.isIOS) {
+    return await _requestStoragePermission();
+  } 
+
+  if (Platform.isAndroid) {
+    final AndroidDeviceInfo androidInfo = await DeviceInfoPlugin().androidInfo;
+    final int sdkInt = androidInfo.version.sdkInt;
+    return sdkInt > 32 ? await _requestPhotosPermission() : await _requestStoragePermission();
   }
 
-  Future<bool> permissionPhotos() async {
-    bool hasPhotosPermission = false;
-    final PermissionStatus try0 = await Permission.photos.status;
-    if (try0 == PermissionStatus.granted) {
-      hasPhotosPermission = true;
-    } else {
-      final PermissionStatus try1 = await Permission.photos.request();
-      if (try1 == PermissionStatus.granted) {
-        hasPhotosPermission = true;
-      } 
-    }
-    return Future<bool>.value(hasPhotosPermission);
-  }
+  return false;
+}
 
-  Future<bool> permissionStorage() async {
-    bool hasStoragePermission = false;
-    final PermissionStatus try0 = await Permission.storage.status;
-    if (try0 == PermissionStatus.granted) {
-      hasStoragePermission = true;
-    } else {
-      final PermissionStatus try1 = await Permission.storage.request();
-      if (try1 == PermissionStatus.granted) {
-        hasStoragePermission = true;
-      }
-    }
-    return Future<bool>.value(hasStoragePermission);
+Future<bool> _requestPhotosPermission() async {
+  PermissionStatus status = await Permission.photos.status;
+  if (status != PermissionStatus.granted) {
+    status = await Permission.photos.request();
   }
+  return status == PermissionStatus.granted;
+}
+
+Future<bool> _requestStoragePermission() async {
+  PermissionStatus status = await Permission.storage.status;
+  if (status != PermissionStatus.granted) {
+    status = await Permission.storage.request();
+  }
+  return status == PermissionStatus.granted;
+}
